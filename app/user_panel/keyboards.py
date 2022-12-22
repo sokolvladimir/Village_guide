@@ -17,14 +17,34 @@ def get_cities_kb():
     return keyboard
 
 
-def get_services_kb(city_id: int):
+def get_services_kb(city_id: int, data):
     """Метод создает клавиатуру для выбора услуги"""
     services = get_services_for_city(city_id)
     keyboard = InlineKeyboardMarkup()
-    for service in services:
+    max_index = len(services) + 1
+    min_index = 0
+    count_button = 6
+    if len(services) > count_button:
+        if data["next_index"] <= len(services) + count_button:
+            if data["next_index"] > len(services):
+                max_index = len(services)
+                min_index = len(services) - count_button
+            else:
+                max_index = data["next_index"]
+                min_index = data["next_index"] - count_button
+        elif data["next_index"] >= len(services) + count_button:
+            data["next_index"] = count_button
+            max_index = count_button
+            min_index = 0
+        else:
+            max_index = data["next_index"]
+            min_index = data["next_index"] - count_button
+    for service in services[min_index:max_index]:
         service_name = service.get("service_name")
         service_id = service.get("service_id")
         keyboard.add(InlineKeyboardButton(text=service_name, callback_data=f"{service_id}"))
+    if len(services) > count_button:
+        keyboard = add_buttons_prev_next(max_index, len(services), keyboard)
     keyboard.add(back)
     return keyboard
 
@@ -41,13 +61,18 @@ def get_type_services_kb(service_id: int, city_id: int):
     return keyboard
 
 
-
 def show_card_kb(index: int, count_cards: int, card_link: str):
     """Метод создает клавиатуру для удаления карточки"""
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton(text="📡 Ссылка", url=card_link))
-    keyboard.add(InlineKeyboardButton(text="◀️", callback_data=f"prev_card"),
-                 InlineKeyboardButton(text=f"{index + 1}/{count_cards}", callback_data="none"),
-                 InlineKeyboardButton(text="▶️", callback_data=f"next_card"))
+    keyboard = add_buttons_prev_next(index + 1, count_cards, keyboard)
     keyboard.add(back)
+    return keyboard
+
+
+def add_buttons_prev_next(index: int, counts: int, keyboard: InlineKeyboardMarkup):
+    """Метод добавляет кнопки для переключения"""
+    keyboard.add(InlineKeyboardButton(text="◀️", callback_data=f"prev"),
+                 InlineKeyboardButton(text=f"{index}/{counts}", callback_data="none"),
+                 InlineKeyboardButton(text="▶️", callback_data=f"next"))
     return keyboard

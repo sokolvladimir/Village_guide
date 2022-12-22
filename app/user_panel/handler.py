@@ -17,23 +17,31 @@ async def city_services(call: types.CallbackQuery, state: FSMContext):
     """Метод для получения всех сервисов в городе"""
     async with state.proxy() as data:
         data['city_id'] = int(call.data)
-    await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(int(call.data)))
+        data["next_index"] = 2
+        await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(int(call.data), data))
     await FSMUserPanel.service_type_service.set()
 
 
 async def service_type_services(call: types.CallbackQuery, state: FSMContext):
     """Метод для получения всех услуг в городе"""
-    match call.data:
-        case "back":
-            await call.message.edit_text("Выберите Город", reply_markup=get_cities_kb())
-            await FSMUserPanel.city_service.set()
-        case _:
-            async with state.proxy() as data:
-                data['service_id'] = int(call.data)
-                city_id = data.get("city_id")
-                await call.message.edit_text("Выберите нужную услугу",
-                                             reply_markup=get_type_services_kb(data['service_id'], city_id))
-                await FSMUserPanel.type_service_cards.set()
+    async with state.proxy() as data:
+        match call.data:
+            case "back":
+                await call.message.edit_text("Выберите Город", reply_markup=get_cities_kb())
+                await FSMUserPanel.city_service.set()
+            case "next":
+                data["next_index"] += 2
+                await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(data['city_id'], data))
+            case "prev":
+                data["next_index"] -= 2
+                await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(data['city_id'], data))
+            case _:
+                async with state.proxy() as data:
+                    data['service_id'] = int(call.data)
+                    city_id = data.get("city_id")
+                    await call.message.edit_text("Выберите нужную услугу",
+                                                 reply_markup=get_type_services_kb(data['service_id'], city_id))
+                    await FSMUserPanel.type_service_cards.set()
 
 
 async def type_service_cards(call: types.CallbackQuery, state: FSMContext):
@@ -41,9 +49,10 @@ async def type_service_cards(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         city_id = data["city_id"]
         service_id = data['service_id']
+        next_index = data["next_index"]
         match call.data:
             case "back":
-                await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(city_id))
+                await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(city_id, next_index))
                 await FSMUserPanel.service_type_service.set()
             case _:
                 data["type_service_id"] = int(call.data)
@@ -70,8 +79,8 @@ async def show_card(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         city_id = data["city_id"]
         service_id = data['service_id']
-        match call.data.split("_"):
-            case ("next", "card"):
+        match call.data:
+            case "next":
                 data["index"] += 1
                 if data["index"] == data["count_cards"]:
                     data["index"] = 0
@@ -83,7 +92,7 @@ async def show_card(call: types.CallbackQuery, state: FSMContext):
                                               reply_markup=show_card_kb(index=data["index"],
                                                                         count_cards=data["count_cards"],
                                                                         card_link=card['site_link']))
-            case ("prev", "card"):
+            case "prev":
                 data["index"] -= 1
                 if data["index"] == -1:
                     data["index"] = data["count_cards"] - 1
@@ -95,9 +104,9 @@ async def show_card(call: types.CallbackQuery, state: FSMContext):
                                               reply_markup=show_card_kb(index=data["index"],
                                                                         count_cards=data["count_cards"],
                                                                         card_link=card['site_link']))
-            case ["none"]:
+            case "none":
                 pass
-            case ["back"]:
+            case "back":
                 await call.message.answer("Выберите нужный функцонал",
                                           reply_markup=get_type_services_kb(service_id , city_id))
                 await call.message.delete()

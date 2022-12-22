@@ -3,7 +3,7 @@ import logging
 
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Enum, Table
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import database_exists, create_database
 

@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  village_guide:
+    build: ./projects/Village_guide
+    restart: always
+    command: python3 -m app
+    env_file:
+      - ./projects/Village_guide/.env
+
+  db:
+    image: postgres
+    env_file:
+      - ./.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
