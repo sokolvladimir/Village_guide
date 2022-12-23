@@ -1,12 +1,16 @@
 version: '3'
 
 services:
-  village_guide:
-    build: ./projects/Village_guide
-    restart: always
-    command: python3 -m app
+  app:
+    build:
+      context: .
+    command: bash -c 'while !</dev/tcp/db/5432; do sleep 1; done; python3 -m app'
+    volumes:
+      - ./app:/app
     env_file:
-      - ./projects/Village_guide/.env
+      - ./.env
+    depends_on:
+      - db
 
   db:
     image: postgres
