@@ -1,3 +1,5 @@
 aiogram~=2.23.1
 python-dotenv~=0.21.0
 SQLAlchemy~=1.4.45
+psycopg2-binary==2.9.5
+SQLAlchemy-Utils==0.38.3
