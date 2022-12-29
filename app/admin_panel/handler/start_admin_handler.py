@@ -35,9 +35,12 @@ async def start(message: types.Message, state: FSMContext):
 
 
 async def start_admin_panel(call: CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data["city_index"] = 1
     match call.data:
         case "add_cards":
-            await call.message.edit_text("Выберите город или другое действие", reply_markup=city_kb())
+            await call.message.edit_text("Выберите город или другое действие",
+                                         reply_markup=city_kb(index=data["city_index"]))
             await FSMService.city.set()
         case "admin_panel":
             await call.message.edit_text("Выберите действие", reply_markup=admin_settings_kb)

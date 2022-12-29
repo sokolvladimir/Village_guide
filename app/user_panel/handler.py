@@ -7,19 +7,35 @@ from app.user_panel.keyboards import get_cities_kb, get_services_kb, show_card_k
 from app.user_panel.state import FSMUserPanel
 
 
-async def start_user_panel(message: types.Message):
+async def start_user_panel(message: types.Message, state: FSMContext):
     """Метод для старта панели пользователя"""
-    await message.answer("Выберите Город", reply_markup=get_cities_kb())
-    await FSMUserPanel.city_service.set()
+    if state:
+        await state.finish()
+    async with state.proxy() as data:
+        data["city_index"] = 1
+        await message.answer("Выберите Город", reply_markup=get_cities_kb(index=data["city_index"]))
+        await FSMUserPanel.city_service.set()
 
 
 async def city_services(call: types.CallbackQuery, state: FSMContext):
     """Метод для получения всех сервисов в городе"""
     async with state.proxy() as data:
-        data['city_id'] = int(call.data)
-        data["next_index"] = 2
-        await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(int(call.data), data))
-    await FSMUserPanel.service_type_service.set()
+        match call.data:
+            case "prev":
+                data["city_index"] -= 1
+                await call.message.edit_text("Выберите Город", reply_markup=get_cities_kb(index=data["city_index"]))
+            case "next":
+                data["city_index"] += 1
+                await call.message.edit_text("Выберите Город", reply_markup=get_cities_kb(index=data["city_index"]))
+            case "none":
+                pass
+            case _:
+                data['city_id'] = int(call.data)
+                data["service_index"] = 1
+                await call.message.edit_text("Выберите нужный сервис",
+                                             reply_markup=get_services_kb(city_id=data['city_id'],
+                                                                          index=data["service_index"]))
+                await FSMUserPanel.service_type_service.set()
 
 
 async def service_type_services(call: types.CallbackQuery, state: FSMContext):
@@ -27,20 +43,28 @@ async def service_type_services(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         match call.data:
             case "back":
-                await call.message.edit_text("Выберите Город", reply_markup=get_cities_kb())
+                await call.message.edit_text("Выберите Город", reply_markup=get_cities_kb(index=data["city_index"]))
                 await FSMUserPanel.city_service.set()
             case "next":
-                data["next_index"] += 2
-                await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(data['city_id'], data))
+                data["service_index"] += 1
+                await call.message.edit_text("Выберите нужный сервис",
+                                             reply_markup=get_services_kb(city_id=data['city_id'],
+                                                                          index=data["service_index"]))
             case "prev":
-                data["next_index"] -= 2
-                await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(data['city_id'], data))
+                data["service_index"] -= 1
+                await call.message.edit_text("Выберите нужный сервис",
+                                             reply_markup=get_services_kb(city_id=data['city_id'],
+                                                                          index=data["service_index"]))
+            case "none":
+                pass
             case _:
                 async with state.proxy() as data:
                     data['service_id'] = int(call.data)
                     city_id = data.get("city_id")
+                    data["type_service_index"] = 1
                     await call.message.edit_text("Выберите нужную услугу",
-                                                 reply_markup=get_type_services_kb(data['service_id'], city_id))
+                                                 reply_markup=get_type_services_kb(data['service_id'], city_id,
+                                                                                   index=data["type_service_index"]))
                     await FSMUserPanel.type_service_cards.set()
 
 
@@ -49,11 +73,23 @@ async def type_service_cards(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         city_id = data["city_id"]
         service_id = data['service_id']
-        next_index = data["next_index"]
         match call.data:
             case "back":
-                await call.message.edit_text("Выберите нужный сервис", reply_markup=get_services_kb(city_id, next_index))
+                await call.message.edit_text("Выберите нужный сервис",
+                                             reply_markup=get_services_kb(city_id, index=data["service_index"]))
                 await FSMUserPanel.service_type_service.set()
+            case "next":
+                data["type_service_index"] += 1
+                await call.message.edit_text("Выберите нужную услугу",
+                                             reply_markup=get_type_services_kb(service_id, city_id,
+                                                                               index=data["type_service_index"]))
+            case "prev":
+                data["type_service_index"] -= 1
+                await call.message.edit_text("Выберите нужную услугу",
+                                             reply_markup=get_type_services_kb(service_id, city_id,
+                                                                               index=data["type_service_index"]))
+            case "none":
+                pass
             case _:
                 data["type_service_id"] = int(call.data)
                 cards = get_cards(type_service_id=data["type_service_id"], village_id=data["city_id"])
@@ -108,7 +144,8 @@ async def show_card(call: types.CallbackQuery, state: FSMContext):
                 pass
             case "back":
                 await call.message.answer("Выберите нужный функцонал",
-                                          reply_markup=get_type_services_kb(service_id , city_id))
+                                          reply_markup=get_type_services_kb(service_id, city_id,
+                                                                            index=data["type_service_index"]))
                 await call.message.delete()
                 await FSMUserPanel.type_service_cards.set()
 
@@ -119,4 +156,3 @@ def register_user_panel_handler(dp: Dispatcher):
     dp.register_callback_query_handler(service_type_services, state=FSMUserPanel.service_type_service)
     dp.register_callback_query_handler(type_service_cards, state=FSMUserPanel.type_service_cards)
     dp.register_callback_query_handler(show_card, state=FSMUserPanel.show_card)
-

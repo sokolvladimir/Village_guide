@@ -20,7 +20,7 @@ def checking_for_administrator(user_id: int, user_name: str) -> int:
         if admin['telegram_id'] == user_id:
             if admin["telegram_username"] != user_name:
                 add_new_name_for_admin(user_id, user_name)
-            if admin['status'] == 'admin':
+            if admin['status'] == AdminStatus.admin:
                 return 1
             elif admin['status'] == AdminStatus.super_admin:
                 return 2

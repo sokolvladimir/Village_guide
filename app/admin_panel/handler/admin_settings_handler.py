@@ -17,7 +17,9 @@ async def add_admin_settings(call: CallbackQuery, state: FSMContext):
                                          "Или нажмите /break, чтобы вернуться назад")
             await FSMAdminSettings.add_admin.set()
         case "remove_admin":
-            kb = get_all_admins_kb()
+            async with state.proxy() as data:
+                data["admin_index"] = 1
+            kb = get_all_admins_kb(index=1)
             if not kb:
                 await call.message.edit_text("⚠️Администраторы отсутствуют\n\nВыберите другое действие",
                                              reply_markup=admin_settings_kb)
@@ -33,20 +35,31 @@ async def add_admin_settings(call: CallbackQuery, state: FSMContext):
 
 
 async def remove_admin(call: CallbackQuery, state: FSMContext):
-    if call.data == 'back':
-        await call.message.edit_text("Выберите действие", reply_markup=admin_settings_kb)
-        await FSMAdminSettings.add_admin_settings.set()
-    else:
-        delete_admin_by_username(call.data)
-        kb = get_all_admins_kb()
-        if not kb:
-            await call.message.edit_text("♻️ Администратор удален\n"
-                                         "⚠️Администраторы отсутствуют\n\n"
-                                         "Выберите действие", reply_markup=admin_settings_kb)
-            await FSMAdminSettings.add_admin_settings.set()
-        else:
-            await call.message.edit_text("♻️ Администратор удален\n"
-                                         "Выберите администратора, которого хотите удалить", reply_markup=kb)
+    async with state.proxy() as data:
+        match call.data:
+            case 'back':
+                await call.message.edit_text("Выберите действие", reply_markup=admin_settings_kb)
+                await FSMAdminSettings.add_admin_settings.set()
+            case "prev":
+                data["admin_index"] -= 1
+                kb = get_all_admins_kb(index=data["admin_index"])
+                await call.message.edit_text("Выберите администратора, которого хотите удалить", reply_markup=kb)
+            case "next":
+                data["admin_index"] += 1
+                kb = get_all_admins_kb(index=data["admin_index"])
+                await call.message.edit_text("Выберите администратора, которого хотите удалить", reply_markup=kb)
+            case _:
+                delete_admin_by_username(call.data)
+                data["admin_index"] = 1
+                kb = get_all_admins_kb(index=data["admin_index"])
+                if not kb:
+                    await call.message.edit_text("♻️ Администратор удален\n"
+                                                 "⚠️Администраторы отсутствуют\n\n"
+                                                 "Выберите действие", reply_markup=admin_settings_kb)
+                    await FSMAdminSettings.add_admin_settings.set()
+                else:
+                    await call.message.edit_text("♻️ Администратор удален\n"
+                                                 "Выберите администратора, которого хотите удалить", reply_markup=kb)
 
 
 async def add_admin(message: Message, state: FSMContext):

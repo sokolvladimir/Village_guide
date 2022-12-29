@@ -35,8 +35,9 @@ async def start_menu(call: CallbackQuery, state: FSMContext):
                         await FSMCards.start_menu.set()
 
             case "back":
+                data["type_service_index"] = 1
                 await call.message.edit_text("Выберите тип услуги",
-                                             reply_markup=get_type_service_kb(service_id=service_id))
+                                             reply_markup=get_type_service_kb(service_id=service_id, index=1))
                 await FSMService.type_service.set()
 
 
